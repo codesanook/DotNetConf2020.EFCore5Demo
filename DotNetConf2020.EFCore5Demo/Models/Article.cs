@@ -16,6 +16,7 @@ namespace DotNetConf2020.EFCore5Demo.Models
         public Article() => Tags = new List<Tag>();
         public ICollection<Tag> Tags { get; set; }
 
+        // This does not required
         public ICollection<ArticleTag> ArticleTags { get; set; }
     }
 }

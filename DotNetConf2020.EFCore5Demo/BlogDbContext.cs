@@ -10,9 +10,10 @@ namespace DotNetConf2020.EFCore5Demo
         public DbSet<User> Users { get; set; }
         public DbSet<Blog> Blogs { get; set; }
         public DbSet<Article> Articles { get; set; }
-        public DbSet<Tag> Tags { get; set; }
 
-        public DbSet<ArticleTag> ArticleTags { get; set; }
+
+
+        public DbSet<Tag> Tags { get; set; }
 
         // Explicitly association 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -26,8 +27,8 @@ namespace DotNetConf2020.EFCore5Demo
                 );
 
             // Need to explicit tell EF we want a table for it
-            modelBuilder.Entity<RssBlog>();
-            // modelBuilder.Entity<RssBlog>().ToTable("RssBlogs");
+            //modelBuilder.Entity<RssBlog>();
+            modelBuilder.Entity<RssBlog>().ToTable("RssBlogs");
         }
     }
 }

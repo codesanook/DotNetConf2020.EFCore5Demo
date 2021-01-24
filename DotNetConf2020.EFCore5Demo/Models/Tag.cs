@@ -9,6 +9,7 @@ namespace DotNetConf2020.EFCore5Demo.Models
 
         public ICollection<Article> Articles { get; set; }
 
+        // This does not required
         public ICollection<ArticleTag> ArticleTags { get; set; }
     }
 }

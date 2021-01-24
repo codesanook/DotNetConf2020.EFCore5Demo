@@ -12,56 +12,67 @@ namespace DotNetConf2020.EFCore5Demo
         public static async Task Main()
         {
             // Demo 1 Basic EF, diagnosis
-            // await BasicEFAndDiagnosisDemoAsync();
+            await BasicEFAndDiagnosisDemoAsync();
 
             // Demo  2
             //await ManyToManyWithoutLinkModelDemoAsync();
 
             // Demo 3
-            await ManyToManyExplicitLinkDemoAsyn();
+            // await ManyToManyExplicitLinkDemoAsyn();
 
             // Demo 4
-            await TablePerHierarchyDemoAsync();
+            // modelBuilder.Entity<RssBlog>()
+            //await TablePerHierarchyDemoAsync();
+
+            // Demo 5
+            // modelBuilder.Entity<RssBlog>().ToTable("RssBlogs")
+            // await TablePerTypeDemoAsync();
         }
 
         private static async Task BasicEFAndDiagnosisDemoAsync()
         {
-            var context = CreateDbContext();
+            var dbContext = CreateDbContext();
+
             var admin = new User() { Username = "admin", Email = "admin@codesanook.com" };
             var user = new User() { Username = "ponggung", Email = "ponggung@codesanook.com" };
-            context.Users.AddRange(admin, user);
+            dbContext.Users.AddRange(admin, user);
 
             var blog = new Blog() { Name = "EF", Description = "Blog about EF", CreatedBy = admin };
-            var post1 = new Article() { Title = "EF Mapping", Content = "Learn EF Mapping", Author = user };
-            var post2 = new Article() { Title = "EF Eager loading", Content = "Learn EF Eager loading", Author = user };
+            var article1 = new Article() { Title = "EF Mapping", Content = "Learn EF Mapping", Author = user };
+            var article2 = new Article() { Title = "EF Eager loading", Content = "Learn EF Eager loading", Author = user };
 
-            blog.Articles.Add(post1);
-            blog.Articles.Add(post2);
+            blog.Articles.Add(article1);
+            blog.Articles.Add(article2);
 
-            context.Blogs.Add(blog);
-            await context.SaveChangesAsync();
+            dbContext.Blogs.Add(blog);
+            await dbContext.SaveChangesAsync(); // persist db
 
             // query projection
-            var postTitlesWithMethodSyntax = context.Articles
+            var articleTitlesWithMethodSyntax = dbContext.Articles
                 .Where(p => p.Blog.Name == "EF")
                 .Select(p => p.Title);
 
-            var postTitleWithQuerySyntax =
-                from p in context.Articles
+            // Console.WriteLine(articleTitlesWithMethodSyntax.ToQueryString());
+
+            // Iterate the result
+            foreach (var title in articleTitlesWithMethodSyntax)
+            {
+                Console.WriteLine($"article title: {title}");
+            }
+
+            // Update Titlle
+            article1.Title = "EF is fun";
+            await dbContext.SaveChangesAsync();
+
+            var articleTitleWithQuerySyntax =
+                from p in dbContext.Articles
                 where p.Blog.Name == "EF"
                 select p.Title;
 
-            // Console.WriteLine(postTitlesWithMethodSyntax.ToQueryString());
-
-            // Iterate the result
-            foreach (var title in postTitlesWithMethodSyntax)
+            Console.WriteLine("\nAfter updated");
+            foreach (var title in articleTitleWithQuerySyntax)
             {
-                Console.WriteLine($"post title {title}");
-            }
-
-            foreach (var title in postTitleWithQuerySyntax)
-            {
-                Console.WriteLine($"post content {title}");
+                Console.WriteLine($"article title: {title}");
             }
         }
 
@@ -73,7 +84,8 @@ namespace DotNetConf2020.EFCore5Demo
             var admin = new User() { Username = "admin", Email = "admin@codesanook.com" };
             context.Users.Add(admin);
 
-            var tag = new Tag() { Name = "ef" };
+            const string tagName = "ef";
+            var tag = new Tag() { Name = tagName };
             context.Tags.Add(tag);
 
             var blog = new Blog() { Name = "Entity Framework Core", Description = "Blog about EF", CreatedBy = admin };
@@ -95,27 +107,13 @@ namespace DotNetConf2020.EFCore5Demo
             context.Articles.Add(article);
             await context.SaveChangesAsync();
 
-            // query projection
-            var postTitlesWithMethodSyntax = context.Articles
-                .Where(p => p.Blog.Name == "EF")
+            var articleTitlesWithGivenTag = context.Articles
+                .Where(p => p.Tags.Any(t => t.Name == tagName))
                 .Select(p => p.Title);
 
-            var postTitleWithQuerySyntax =
-                from p in context.Articles
-                where p.Blog.Name == "EF"
-                select p.Title;
-
-            // Console.WriteLine(postTitlesWithMethodSyntax.ToQueryString());
-
-            // Iterate the result
-            foreach (var title in postTitlesWithMethodSyntax)
+            foreach (var title in articleTitlesWithGivenTag)
             {
-                Console.WriteLine($"post title {title}");
-            }
-
-            foreach (var title in postTitleWithQuerySyntax)
-            {
-                Console.WriteLine($"post content {title}");
+                Console.WriteLine($"article title: {title}");
             }
         }
 
@@ -146,17 +144,17 @@ namespace DotNetConf2020.EFCore5Demo
             var articleTag = new ArticleTag() { Article = article, Tag = tag, CreatedUtc = DateTime.UtcNow.AddMonths(-1) };
 
             context.Articles.Add(article);
-            context.ArticleTags.Add(articleTag);
+            context.Set<ArticleTag>().Add(articleTag);
             await context.SaveChangesAsync();
 
             var tagCreatedFrom = DateTime.UtcNow.AddMonths(-2);
-            var postTitlesWithMethodSyntax = context.Articles
+            var articleTitlesCreatedFromDate = context.Articles
                 .Where(p => p.ArticleTags.Any(at => at.CreatedUtc >= tagCreatedFrom))
                 .Select(p => p.Title);
 
-            foreach (var title in postTitlesWithMethodSyntax)
+            foreach (var title in articleTitlesCreatedFromDate)
             {
-                Console.WriteLine($"post title: {title}");
+                Console.WriteLine($"article title: {title}");
             }
         }
 
@@ -169,14 +167,21 @@ namespace DotNetConf2020.EFCore5Demo
             // Disciminator => Blog
             var blog = new Blog() { Name = "Entity Framework Core", Description = "Blog about EF", CreatedBy = admin };
             // Disciminator => Blog 
-            var rssBlog = new RssBlog() { Name = "RSS Entity Framework Core", Description = "RSS Blog about EF", CreatedBy = admin };
+            var rssBlog = new RssBlog()
+            {
+                Name = "RSS Entity Framework Core",
+                Description = "RSS Blog about EF",
+                CreatedBy = admin,
+                Url = "Codesanook.com"
+            };
+
             dbContext.Blogs.AddRange(blog, rssBlog);
             dbContext.SaveChanges();
 
-            // Iterate the result
-            foreach (var name in dbContext.Blogs.Select(b => b.Name))
+            // Iterate the result, Use .Set
+            foreach (var blogItem in dbContext.Set<RssBlog>().Select(b => new { b.Name, b.Url }))
             {
-                Console.WriteLine($"blog title {name}");
+                Console.WriteLine($"blog name: {blogItem.Name}, URL: {blogItem.Url}");
             }
         }
 
@@ -186,17 +191,23 @@ namespace DotNetConf2020.EFCore5Demo
             var admin = new User() { Username = "admin", Email = "admin@codesanook.com" };
             dbContext.Users.Add(admin);
 
-            // Disciminator => Blog
+            // new table Blogs
             var blog = new Blog() { Name = "Entity Framework Core", Description = "Blog about EF", CreatedBy = admin };
-            // Disciminator => Blog 
-            var rssBlog = new RssBlog() { Name = "RSS Entity Framework Core", Description = "RSS Blog about EF", CreatedBy = admin };
+            // new Table RssBlogs
+            var rssBlog = new RssBlog()
+            {
+                Name = "RSS Entity Framework Core",
+                Description = "RSS Blog about EF",
+                CreatedBy = admin,
+                Url = "Codesanook.com"
+            };
             dbContext.Blogs.AddRange(blog, rssBlog);
             dbContext.SaveChanges();
 
             // Iterate the result
-            foreach (var name in dbContext.Blogs.Select(b => b.Name))
+            foreach (var blogItem in dbContext.Set<RssBlog>().Select(b => new { b.Name, b.Url }))
             {
-                Console.WriteLine($"blog title {name}");
+                Console.WriteLine($"blog name: {blogItem.Name}, URL: {blogItem.Url}");
             }
         }
 
